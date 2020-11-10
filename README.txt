@@ -31,4 +31,23 @@ Key value store design:
             - If found, it returns the value immediately and updates the frequency and Timestamp
             - If not, it will then go to the PS and search there. Either success(200) or error of (240)
 
-Note: Server port will be read from server_config.txt
+    PUT call design:
+        - For any PUT call, the request handler first searches the cache.
+            - If found, it updates the value immediately and updates the frequency and Timestamp. And also sets the dirty
+              bit to True
+            - If not, it will add the entry in an available cache line (if any) or create space for the entry in the cache
+              by evicting previous entry.
+    
+    DEL call design:
+        - For any DEL call, the request handler first searches the cache.
+            - If found, it makes the cache line available by resetting valid line to False
+        - It will then go to PS and search there and remove the entry
+
+    PS design:
+        - There is multiple files used for storing the entries into persistent storage. 
+
+Server configurations (server_config.txt):
+    - Server port
+    - Number of worker threads
+    - Number of cache lines
+
