@@ -49,6 +49,17 @@ void remove_padding(char *s) {
 }
 
 int get(char* key, char** val, char** error, int serverfd) {
+    if( !key ){
+        *error = (char*) malloc(sizeof(char) * KV_LEN);
+        strncpy(*error, "Error: Memory not allocated to key", KV_LEN);
+        return -1;
+    }
+    else if( strlen(key) > KV_LEN)
+    {
+        *error = (char*) malloc(sizeof(char) * KV_LEN);
+        strncpy(*error, "Error: Key size is greater than 256B", KV_LEN);
+        return -1;
+    }
     // Form the request
     struct timespec start, end;
     struct timeval tv;
@@ -104,6 +115,28 @@ int get(char* key, char** val, char** error, int serverfd) {
 
 
 int put(char* key, char* val, char** error, int serverfd) {
+    if( !key ){
+        *error = (char*) malloc(sizeof(char) * KV_LEN);
+        strncpy(*error, "Error: Memory not allocated to key", KV_LEN);
+        return -1;
+    }
+    else if( strlen(key) > KV_LEN)
+    {
+        *error = (char*) malloc(sizeof(char) * KV_LEN);
+        strncpy(*error, "Error: Key size is greater than 256B", KV_LEN);
+        return -1;
+    }
+    if( !val ){
+        *error = (char*) malloc(sizeof(char) * KV_LEN);
+        strncpy(*error, "Error: Memory not allocated to val", KV_LEN);
+        return -1;
+    }
+    else if( strlen(val) > KV_LEN)
+    {
+        *error = (char*) malloc(sizeof(char) * KV_LEN);
+        strncpy(*error, "Error: Value size is greater than 256B", KV_LEN);
+        return -1;
+    }
     char req[RSIZE];
     req[0] = '2';
     
@@ -165,6 +198,17 @@ int put(char* key, char* val, char** error, int serverfd) {
 
 
 int del(char* key, char** error, int serverfd) {
+    if( !key ){
+        *error = (char*) malloc(sizeof(char) * KV_LEN);
+        strncpy(*error, "Error: Memory not allocated to key", KV_LEN);
+        return -1;
+    }
+    else if( strlen(key) > KV_LEN)
+    {
+        *error = (char*) malloc(sizeof(char) * KV_LEN);
+        strncpy(*error, "Error: Key size is greater than 256B", KV_LEN);
+        return -1;
+    }
     char req[RSIZE];
     struct timespec start, end;
     req[0] = '3';

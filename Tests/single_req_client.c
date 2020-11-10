@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include <string.h>
 
+#include "../KVClient/KVClientLibrary.h"
+
 #define MSG_SIZE 513
 #define KEY_SIZE 256
 #define VAL_SIZE 256
@@ -57,7 +59,7 @@ void connect_send() {
     
     char* buff; 
     while (1) {
-        char key[KEY_SIZE], val[VAL_SIZE];
+        char key[KEY_SIZE], val[VAL_SIZE], *error;
         char buff[MSG_SIZE + 1];
         int status;
         printf("Enter op status, Key & val\n");
@@ -65,8 +67,25 @@ void connect_send() {
         
         sprintf(buff, "%c%s%s", '0' + status, key, val);
         buff[MSG_SIZE] = '\0';
-
-        n = write(sockfd, buff, MSG_SIZE);
+        if (status == 1)
+        {
+            get(key, &val, &error, sockfd);
+        }
+        else if (status == 2)
+        {
+            put(key, val, &error, sockfd);
+        }
+        else if(status == 3)
+        {
+            del(key, &error, sockfd);
+        }
+        else
+        {
+            put(key, val, &error, sockfd);
+        }
+        
+        
+        // n = write(sockfd, buff, MSG_SIZE);
         printf("Sent Msg: %s\n", buff);
         char* resp = (char*) malloc(sizeof(char) * MSG_SIZE);
         int readn = read(sockfd, resp, MSG_SIZE);
@@ -74,7 +93,7 @@ void connect_send() {
         unsigned char status_code = *resp;
         printf("Recv Msg: %s with status: %d\n", resp, status_code);
         if (n < 0) {
-            error("Error writing to socket");
+            // error("Error writing to socket");
         }
     }
 
