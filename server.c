@@ -12,7 +12,7 @@
 #include "DS_Utilities/ds_defs.h"
 #include "Requests/req_handler.h"
 #define BUFFER_SIZE 1024
-int resp_count=0, recv_count =0, in_queue=0, proc_from_queue=0;
+int resp_count = 0, recv_count = 0, in_queue = 0, proc_from_queue = 0;
 int SERVER_PORT;
 int NUM_WORKER_THREADS;
 int* worker_epoll_fds;
@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
     initialize_cache();
     initialise_ps();
     table = createHashTable();
+
     // Mutex required for inserting/deleting from Global Hash Table
     pthread_mutex_init(&mutex, NULL);
     pthread_mutex_init(&resp_lock, NULL);
@@ -78,7 +79,6 @@ int main(int argc, char** argv) {
 
         // Create and spawn worker thread
 		t_ids[i] = i;
-        // printf("Creating thread-id: %d\n", i);
 		pthread_create(&ids[i], NULL, worker, (void*) &t_ids[i]);
 	
     }
@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
 
     // Conitnuously accept new connectionsd
     int wt = 0;
-    int new_conn_count=0;
+    int new_conn_count = 0;
     struct epoll_event ev;
     while (1) {
         // Accept incoming connection
@@ -121,27 +121,20 @@ void* worker(void* arg) {
     // Space for response
     char* resp = (char*) malloc(sizeof(char) * MSG_SIZE);
 
-    // // Probe the file descriptors
+    // Probe the file descriptors
     struct epoll_event events[8];
     
     while (1) {
-        // printf("WT = %d, New round\n", id);
         int nfds = epoll_wait(worker_epoll_fds[id], events, 8, 10000);
-        // printf("WT = %d, After epooll walit\n", id);
-        if (nfds == 0) {
-            // printf("WT: %d epoll time out\n", id);
-        }
-        
+    
         char buff[BUFFER_SIZE];
-
         char* resp = (char*) malloc(sizeof(char) * MSG_SIZE);
 
         for (int i = 0; i < nfds; ++i) {
             memset(buff, 0, BUFFER_SIZE);
             ssize_t len = read(events[i].data.fd, buff, BUFFER_SIZE - 1);
             buff[len] = '\0';
-            // printf("WT = %d, Buff = %s\n", id, buff);
-            // printf("Read %lu Bytes\n", len);
+            
             if (len == 0) {
                 close(events[i].data.fd);
                 continue;
@@ -152,115 +145,50 @@ void* worker(void* arg) {
                 continue;
             }
 
-            // pthread_mutex_lock(&recv_lock);
-            // ++recv_count;
-            // pthread_mutex_unlock(&recv_lock);
-
-            //printf("\n");
-            //printf("WT = %d, MSG = %s\n", id, buff);
-            // printf("Message: %s\n", buff);
             if (buff[0] == '1' || buff[0] == '3') {
                 handle_requests(buff, resp, id);
                 size_t write_len = write(events[i].data.fd, resp, MSG_SIZE);
-                // pthread_mutex_lock(&resp_lock);
-                // printf("WT: %d Responded:%d  received: %d\n",id, ++resp_count, recv_count);
-                // pthread_mutex_unlock(&resp_lock);
-                // printf("Resp: %s\n", resp);
-            } 
-            else 
-            { 
+            } else { 
                 char *key = substring(buff, 1, KEY_SIZE + 1); 
                 char *val = substring(buff, KEY_SIZE + 1, KEY_SIZE + VAL_SIZE + 1); 
-                // printf("WT = %d: Trying to acquire mutex\n", id);
                 pthread_mutex_lock(&mutex);
-                // printf("WT = %d: acquired mutex\n", id);
+
                 // if any other thread is handling PUT request with same key, then don't handle that now
                 // Add that PUT request to a queue. Handle that later
-                
-                if (!searchInHash(table, key)) //check global hash table
-                   {
+                if (!searchInHash(table, key)) { //check global hash table
                     insertToHash(table, key);
-                    // printf("WT = %d: After inserting %s in hash: %d\n", id, key, searchInHash(table,key)?1:0);
                     pthread_mutex_unlock(&mutex);
-                    // printf("WT = %d: Released mutex\n", id);
-                    // printf("WT = %d: Called handle_requests\n", id);
                     handle_requests(buff,resp,id);
                     size_t write_len = write(events[i].data.fd, resp, MSG_SIZE);
-                    // pthread_mutex_lock(&resp_lock);
-                    // printf("WT: %d Responded:%d  received: %d\n",id, ++resp_count, recv_count);
-                    // pthread_mutex_unlock(&resp_lock);
-                    // printf("Resp: %s\n", resp);
-                    // printf("WT = %d: completed handle_requests\n", id);
-                    // printf("WT = %d: Trying to acquire mutex\n", id);
                     pthread_mutex_lock(&mutex);
-                    // printf("WT = %d: acquired mutex\n", id);
                     deleteFromHash(table, key);
-                    // printf("WT = %d: After deleting %s from hash table: %d\n", id, key, searchInHash(table,key)?1:0);
-
-                   } 
-                else {
-                    // printf("WT = %d: Adding to Queue %s\n", id, buff);
+                } else {
                     add(Q, buff, events[i].data.fd);
-                    // pthread_mutex_lock(&in_queue_lock);
-                    // ++in_queue;
-                    // pthread_mutex_unlock(&in_queue_lock);
                 }
+
                 pthread_mutex_unlock(&mutex);
-                // printf("WT = %d: Released mutex\n", id);
             }
-            // printf("WT: %d Before Q\n", id);
-            
-            
-            // printf("WT: %d After Q\n",id);
-            // printf("Resp: %s\n", resp);
-            
-            // printf("WT = %d: After write, len = %lu\n", id, write_len);
-            // handle_requests(buff); // Here request will be parsed and appropriate action will be taken
         }
+        
         // handle the queued PUT requests before starting the next round of epoll_wait()
-
-        // printf("WT = %d, Queue size: %d\n", id, size(Q));
-
         while(!isEmpty(Q)) {
-            // printf("WT: %d Queue size: %d for message: %s\n",id,  Q->size, buff);
             char *key;
             struct QueueNode *item = top(Q);
-            // printf("WT = %d, Hello = %p\n", id, item);
-            // printf("WT = %d: Trying to acquire mutex from queue\n", id);
             pthread_mutex_lock(&mutex);
-            // printf("WT = %d: acquired mutex\n", id);
             key = substring(item->req, 1, KEY_SIZE + 1);
-            // printf("WT = %d: After substring\n", id);
             if (!searchInHash(table, key)) {
-                // printf("WT = %d: Before insertTohash\n", id);
                 insertToHash(table,key);
-                //  printf("WT = %d: After insertTohash\n", id);
                 pthread_mutex_unlock(&mutex);
-                // printf("WT = %d: Released mutex\n", id);
-                // printf("WT: %d Starting processing request %s from Queue\n",id, buff);
                 handle_requests(buff, resp, id);
-                // printf("WT: %d Processed request %s from Queue\n",id, buff);
                 size_t write_len = write(item->clientFd, resp, MSG_SIZE);
-                // pthread_mutex_lock(&proc_from_queue_lock);
-                // ++proc_from_queue;
-                // pthread_mutex_unlock(&proc_from_queue_lock);
-                // pthread_mutex_lock(&resp_lock);
-                // printf("WT: %d Responded:%d  received: %d\n",id, ++resp_count, recv_count);
-                // pthread_mutex_unlock(&resp_lock);
-                // printf("Resp: %s\n", resp);
-                // printf("WT = %d: After write, len = %lu\n", id, write_len);
                 pthread_mutex_lock(&mutex);
-                // printf("WT = %d: acquired mutex\n", id);
                 deleteFromHash(table,key);
                 pthread_mutex_unlock(&mutex);
-                // printf("WT = %d: Released mutex\n", id);
                 pop(Q);
-            }
-            else if (size(Q) != 1) {
+            } else if (size(Q) != 1) {
                 add(Q, item->req, item->clientFd);
                 pop(Q);
                 pthread_mutex_unlock(&mutex);
-                // printf("WT = %d: Released mutex\n", id);
             } else if (size(Q) == 1)
                 pthread_mutex_unlock(&mutex);
         }
@@ -302,6 +230,11 @@ void read_config() {
             {
                 token = strtok(NULL, "=");
                 CACHE_LEN=  atoi(token);
+            }
+            else if(strcmp(token, "REPLACEMENT_POLICY")==0)
+            {
+                token = strtok(NULL, "=");
+                REPLACEMENT_POLICY = strdup(token);
             }
             else
             {

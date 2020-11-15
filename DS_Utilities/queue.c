@@ -46,16 +46,14 @@ void add(struct Queue* queue, char *req, int clientFd)
 // It changes front and size 
 void pop(struct Queue* queue) 
 { 
-    if (queue->rear == NULL)
-    {
+    if (queue->rear == NULL) {
         return;
     }
 	struct QueueNode *temp= queue->front;
     queue->front = temp->next;
     free(temp);
     queue->size--;
-    if (queue->size==0)
-    {
+    if (queue->size==0) {
         queue->front=NULL;
         queue->rear=NULL;
     }
@@ -80,10 +78,8 @@ int size(struct Queue *queue){
 
 void print_queue(struct Queue *Q){
     struct QueueNode *temp = Q->front;
-    while (temp)
-    {
+    while (temp) {
         printf("Data:%s\n", temp->req);
         temp=temp->next;
     }
-    
 }

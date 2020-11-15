@@ -35,9 +35,16 @@ int put(char* key, char* val, char** error, int serverfd);
 int del(char* key, char** error, int serverfd);
 
 struct time_stats *initialise_timer();
+
 void destroy_timer();
+
 double get_total_get_time();
+
 double get_total_put_time();
+
 double get_total_del_time();
-void add_padding(char *s);
+
+char* add_padding(char *s);
+
 void remove_padding(char *s);
+

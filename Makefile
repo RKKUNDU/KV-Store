@@ -1,4 +1,5 @@
 server:	Server
+	@clear
 	@mkdir -p Persistent_Store  
 	./Server
 
@@ -42,6 +43,7 @@ clean:
 
 #### Run Test Client ####
 run_test_client: test_client
+	@clear
 	@./test_client
 
 test_client: Tests/test_client.o KVClient/client_api.o
@@ -52,3 +54,20 @@ Tests/test_client.o: Tests/test_client.c
 
 KVClient/client_api.o: KVClient/KVClientLibrary.h KVClient/KVClientLibrary.c
 	@gcc -c KVClient/KVClientLibrary.c -o KVClient/client_api.o
+
+
+#### Run Single Req client ####
+
+run_single_req_client: single_req_client
+	@clear
+	@./single_req_client
+
+with_input_single_req_client: single_req_client
+	@clear
+	./single_req_client < input
+
+single_req_client: Tests/single_req_client.o KVClient/client_api.o
+	@gcc Tests/single_req_client.o KVClient/client_api.o -o single_req_client -lpthread
+
+Tests/single_req_client.o: Tests/single_req_client.c
+	@gcc -c Tests/single_req_client.c -o Tests/single_req_client.o

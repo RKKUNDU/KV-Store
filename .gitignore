@@ -16,3 +16,5 @@ server_config.txt
 Tests/client_config.txt
 .fuse*
 Report/*
+Graph Plots/*
+single_req_client
